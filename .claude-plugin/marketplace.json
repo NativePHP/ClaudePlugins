@@ -1,0 +1,14 @@
+{
+  "name": "nativephp-mobile-plugin",
+  "owner": {
+    "name": "Bifrost Technology"
+  },
+  "plugins": [
+    {
+      "name": "nativephp-mobile",
+      "source": "./nativephp-mobile",
+      "description": "Comprehensive assistance for building iOS and Android apps with NativePHP Mobile",
+      "version": "0.1.0"
+    }
+  ]
+}

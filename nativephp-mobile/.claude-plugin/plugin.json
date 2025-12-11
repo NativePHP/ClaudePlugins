@@ -1,0 +1,21 @@
+{
+  "name": "nativephp-mobile",
+  "version": "0.1.0",
+  "description": "Comprehensive assistance for building iOS and Android apps with NativePHP Mobile - APIs, events, EDGE components, configuration, and deployment",
+  "author": {
+    "name": "NativePHP",
+    "url": "https://nativephp.com"
+  },
+  "homepage": "https://nativephp.com/docs/mobile/2",
+  "repository": "https://github.com/NativePHP/mobile",
+  "license": "MIT",
+  "keywords": [
+    "nativephp",
+    "mobile",
+    "ios",
+    "android",
+    "laravel",
+    "livewire",
+    "php"
+  ]
+}
