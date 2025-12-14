@@ -1,0 +1,579 @@
+---
+name: NativePHP Plugin Structure
+description: This skill explains NativePHP plugin structure and configuration. Use when the user asks about "plugin structure", "nativephp.json", "plugin manifest", "composer.json setup", "service provider", "facade", "plugin directory layout", "bridge_functions array", "plugin permissions", "plugin dependencies", "plugin hooks", "copy_assets", or how to organize a NativePHP plugin package.
+version: 1.0.0
+---
+
+# NativePHP Plugin Structure
+
+NativePHP plugins are Composer packages that extend NativePHP with native iOS/Android functionality. This skill covers the complete plugin structure.
+
+## Directory Layout
+
+```
+my-plugin/
+├── composer.json                     # Composer package definition
+├── nativephp.json                    # Plugin manifest (REQUIRED)
+├── README.md                         # Plugin documentation
+├── .gitignore
+├── src/
+│   ├── MyPluginServiceProvider.php   # Laravel service provider
+│   ├── MyPlugin.php                  # Main API class
+│   ├── Facades/
+│   │   └── MyPlugin.php              # Laravel facade
+│   ├── Events/                       # Events dispatched from native
+│   │   └── MyPluginCompleted.php
+│   └── Commands/
+│       └── CopyAssetsCommand.php     # Lifecycle hook commands
+├── resources/
+│   ├── android/
+│   │   └── MyPluginFunctions.kt      # Kotlin bridge functions
+│   ├── ios/
+│   │   └── MyPluginFunctions.swift   # Swift bridge functions
+│   ├── js/
+│   │   └── myPlugin.js               # JavaScript bridge module
+│   └── boost/
+│       └── guidelines/
+│           └── core.blade.php        # Boost AI guidelines
+└── tests/
+    ├── Pest.php
+    └── PluginTest.php                # Plugin validation tests
+```
+
+## composer.json
+
+The Composer manifest must declare the package type as `nativephp-plugin`:
+
+```json
+{
+    "name": "vendor/my-plugin",
+    "description": "A NativePHP plugin that does something awesome",
+    "type": "nativephp-plugin",
+    "license": "MIT",
+    "require": {
+        "php": "^8.1",
+        "nativephp/mobile": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Vendor\\MyPlugin\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Vendor\\MyPlugin\\MyPluginServiceProvider"
+            ],
+            "aliases": {
+                "MyPlugin": "Vendor\\MyPlugin\\Facades\\MyPlugin"
+            }
+        }
+    }
+}
+```
+
+### Critical Fields
+
+| Field | Requirement |
+|-------|-------------|
+| `type` | MUST be `"nativephp-plugin"` |
+| `require.nativephp/mobile` | Required dependency |
+| `extra.laravel.providers` | Auto-register service provider |
+| `extra.laravel.aliases` | Auto-register facade |
+
+## nativephp.json - The Plugin Manifest
+
+This is the **most important file** in a NativePHP plugin. It tells NativePHP what the plugin provides.
+
+### Complete Template
+
+```json
+{
+    "name": "vendor/my-plugin",
+    "version": "1.0.0",
+    "description": "What this plugin does",
+    "namespace": "MyPlugin",
+
+    "bridge_functions": [
+        {
+            "name": "MyPlugin.Execute",
+            "android": "com.example.androidphp.bridge.plugins.myplugin.MyPluginFunctions.Execute",
+            "ios": "MyPluginFunctions.Execute",
+            "description": "Executes the main plugin action"
+        },
+        {
+            "name": "MyPlugin.GetStatus",
+            "android": "com.example.androidphp.bridge.plugins.myplugin.MyPluginFunctions.GetStatus",
+            "ios": "MyPluginFunctions.GetStatus",
+            "description": "Gets the current status"
+        }
+    ],
+
+    "android": {
+        "permissions": [
+            "android.permission.CAMERA",
+            "android.permission.VIBRATE"
+        ],
+        "dependencies": {
+            "implementation": [
+                "com.google.mlkit:barcode-scanning:17.2.0",
+                "androidx.camera:camera-core:1.3.0"
+            ]
+        },
+        "activities": [
+            {
+                "name": ".ScannerActivity",
+                "theme": "@style/Theme.AppCompat.NoActionBar",
+                "screenOrientation": "portrait",
+                "exported": false
+            }
+        ],
+        "services": [],
+        "receivers": [],
+        "providers": [],
+    },
+
+    "ios": {
+        "permissions": {
+            "NSCameraUsageDescription": "This plugin needs camera access to scan barcodes"
+        },
+        "dependencies": {
+            "swift_packages": [
+                {
+                    "url": "https://github.com/example/package.git",
+                    "version": "1.0.0"
+                }
+            ],
+            "pods": [
+                "TensorFlowLiteSwift"
+            ]
+        }
+    },
+
+    "assets": {
+        "android": {
+            "model.tflite": "assets/model.tflite"
+        },
+        "ios": {
+            "model.mlmodel": "Resources/model.mlmodel"
+        }
+    },
+
+    "events": [
+        "Vendor\\MyPlugin\\Events\\SomethingHappened",
+        "Vendor\\MyPlugin\\Events\\OperationCompleted"
+    ],
+
+    "hooks": {
+        "copy_assets": "nativephp:my-plugin:copy-assets"
+    },
+
+    "service_provider": "Vendor\\MyPlugin\\MyPluginServiceProvider"
+}
+```
+
+### Manifest Sections Explained
+
+#### bridge_functions
+
+Maps PHP method calls to native implementations:
+
+```json
+"bridge_functions": [
+    {
+        "name": "MyPlugin.Execute",
+        "android": "com.example.androidphp.bridge.plugins.myplugin.MyPluginFunctions.Execute",
+        "ios": "MyPluginFunctions.Execute",
+        "description": "What this function does"
+    }
+]
+```
+
+- `name`: The method name used in `nativephp_call('MyPlugin.Execute', [])`
+- `android`: Full Kotlin class path (package + class name)
+- `ios`: Swift class path (just the class names, enum.class format)
+- `description`: Documentation for the function
+
+**Naming convention**: `Namespace.Action` (e.g., `Camera.Capture`, `Haptics.Vibrate`)
+
+#### android section
+
+All Android-specific configuration goes under the `android` key:
+
+```json
+"android": {
+    "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.VIBRATE"
+    ],
+    "dependencies": {
+        "implementation": [
+            "com.google.mlkit:barcode-scanning:17.2.0",
+            "androidx.camera:camera-camera2:1.3.0"
+        ]
+    },
+    "activities": [...],
+    "services": [...],
+    "receivers": [...],
+    "providers": [...],
+}
+```
+
+**permissions**: Array of Android permission strings
+**dependencies**: Gradle dependency strings (implementation, api, compileOnly, runtimeOnly)
+**activities/services/receivers/providers**: AndroidManifest.xml components
+
+#### ios section
+
+All iOS-specific configuration goes under the `ios` key:
+
+```json
+"ios": {
+    "permissions": {
+        "NSCameraUsageDescription": "Explain why camera is needed",
+        "NSMicrophoneUsageDescription": "Explain why microphone is needed"
+    },
+    "dependencies": {
+        "swift_packages": [
+            {
+                "url": "https://github.com/example/package.git",
+                "version": "1.0.0"
+            }
+        ],
+        "pods": [
+            "TensorFlowLiteSwift"
+        ]
+    }
+}
+```
+
+**permissions**: Object mapping Info.plist keys to usage descriptions
+**dependencies**: Swift Package URLs with versions, or CocoaPods names
+
+#### assets section
+
+Static assets to copy during build are defined at the top level:
+
+```json
+"assets": {
+    "android": {
+        "model.tflite": "assets/model.tflite"
+    },
+    "ios": {
+        "model.mlmodel": "Resources/model.mlmodel"
+    }
+}
+```
+
+Use `assets` for small static files. Use the `copy_assets` hook for large files, ML models, or files that need processing.
+
+#### events
+
+Events that native code dispatches to PHP:
+
+```json
+"events": [
+    "Vendor\\MyPlugin\\Events\\ScanCompleted",
+    "Vendor\\MyPlugin\\Events\\OperationFailed"
+]
+```
+
+These are the fully-qualified PHP class names. Livewire components listen with:
+```php
+#[On('native:Vendor\MyPlugin\Events\ScanCompleted')]
+```
+
+#### hooks
+
+Lifecycle hooks for build-time operations:
+
+```json
+"hooks": {
+    "copy_assets": "nativephp:my-plugin:copy-assets",
+    "pre_compile": "nativephp:my-plugin:pre-compile",
+    "post_compile": "nativephp:my-plugin:post-compile",
+    "post_build": "nativephp:my-plugin:post-build"
+}
+```
+
+Each hook is an Artisan command signature.
+
+#### Android Manifest Components
+
+Android activities, services, receivers, and providers are defined under `android`:
+
+```json
+"android": {
+    "activities": [
+        {
+            "name": ".MyActivity",
+            "theme": "@style/Theme.AppCompat.NoActionBar",
+            "screenOrientation": "portrait",
+            "exported": false,
+            "launchMode": "singleTask",
+            "configChanges": "orientation|screenSize",
+            "intent-filters": [...]
+        }
+    ],
+    "services": [
+        {
+            "name": ".MyService",
+            "exported": false,
+            "foregroundServiceType": "camera"
+        }
+    ],
+    "receivers": [
+        {
+            "name": ".MyBroadcastReceiver",
+            "exported": true,
+            "intent-filters": [
+                {
+                    "action": ["android.intent.action.BOOT_COMPLETED"]
+                }
+            ]
+        }
+    ],
+    "providers": []
+}
+```
+
+**Name resolution**: Names starting with `.` become `{appId}.bridge.plugins.{namespace}.ClassName`
+
+## Service Provider
+
+The service provider registers your plugin with Laravel:
+
+```php
+<?php
+
+namespace Vendor\MyPlugin;
+
+use Illuminate\Support\ServiceProvider;
+
+class MyPluginServiceProvider extends ServiceProvider
+{
+    public function register(): void
+    {
+        $this->app->singleton(MyPlugin::class, function ($app) {
+            return new MyPlugin();
+        });
+    }
+
+    public function boot(): void
+    {
+        // Register Artisan commands
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                Commands\CopyAssetsCommand::class,
+            ]);
+        }
+
+        // Publish config (optional)
+        $this->publishes([
+            __DIR__.'/../config/my-plugin.php' => config_path('my-plugin.php'),
+        ], 'my-plugin-config');
+    }
+}
+```
+
+## Facade
+
+Provides a clean API for users:
+
+```php
+<?php
+
+namespace Vendor\MyPlugin\Facades;
+
+use Illuminate\Support\Facades\Facade;
+
+/**
+ * @method static array execute(string $param)
+ * @method static array getStatus()
+ *
+ * @see \Vendor\MyPlugin\MyPlugin
+ */
+class MyPlugin extends Facade
+{
+    protected static function getFacadeAccessor(): string
+    {
+        return \Vendor\MyPlugin\MyPlugin::class;
+    }
+}
+```
+
+## Main API Class
+
+The implementation that calls native code:
+
+```php
+<?php
+
+namespace Vendor\MyPlugin;
+
+class MyPlugin
+{
+    public function execute(string $param): void
+    {
+        if (function_exists('nativephp_call')) {
+            nativephp_call('MyPlugin.Execute', json_encode([
+                'param' => $param,
+            ]));
+        }
+    }
+
+    public function getStatus(): void
+    {
+        if (function_exists('nativephp_call')) {
+            nativephp_call('MyPlugin.GetStatus', '{}');
+        }
+    }
+}
+```
+
+## Event Classes
+
+Simple POJOs for native-to-PHP events:
+
+```php
+<?php
+
+namespace Vendor\MyPlugin\Events;
+
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Queue\SerializesModels;
+
+class ScanCompleted
+{
+    use Dispatchable, SerializesModels;
+
+    public function __construct(
+        public string $result,
+        public string $format,
+        public ?string $id = null
+    ) {}
+}
+```
+
+**Important**: Events do NOT use `ShouldBroadcast` or broadcasting channels. They're dispatched via JavaScript injection.
+
+## Lifecycle Hook Commands
+
+For build-time operations like copying ML models:
+
+```php
+<?php
+
+namespace Vendor\MyPlugin\Commands;
+
+use Native\Mobile\Commands\NativePluginHookCommand;
+
+class CopyAssetsCommand extends NativePluginHookCommand
+{
+    protected $signature = 'nativephp:my-plugin:copy-assets';
+    protected $description = 'Copy plugin assets to native projects';
+
+    public function handle(): int
+    {
+        if ($this->isAndroid()) {
+            $this->copyToAndroidAssets(
+                'model.tflite',
+                'model.tflite'
+            );
+        }
+
+        if ($this->isIos()) {
+            $this->copyToIosBundle(
+                'model.mlmodel',
+                'model.mlmodel'
+            );
+        }
+
+        return self::SUCCESS;
+    }
+}
+```
+
+### Available Hook Methods
+
+| Method | Purpose |
+|--------|---------|
+| `$this->isAndroid()` | Check if building for Android |
+| `$this->isIos()` | Check if building for iOS |
+| `$this->copyToAndroidAssets($src, $dest)` | Copy to Android assets |
+| `$this->copyToIosBundle($src, $dest)` | Copy to iOS bundle |
+
+## Native Code Location
+
+### Android (Kotlin)
+
+Place in: `resources/android/src/`
+
+```
+resources/android/src/
+└── MyPluginFunctions.kt
+```
+
+Or with subdirectories:
+```
+resources/android/src/
+├── MyPluginFunctions.kt
+└── activities/
+    └── ScannerActivity.kt
+```
+
+### iOS (Swift)
+
+Place in: `resources/ios/Sources/`
+
+```
+resources/ios/Sources/
+└── MyPluginFunctions.swift
+```
+
+Or with subdirectories:
+```
+resources/ios/Sources/
+├── MyPluginFunctions.swift
+└── ViewControllers/
+    └── ScannerViewController.swift
+```
+
+## Registering with the App
+
+After creating your plugin, users install it with:
+
+```bash
+composer require vendor/my-plugin
+```
+
+Then in their app's `composer.json`, they may need to add a path repository if developing locally:
+
+```json
+{
+    "repositories": [
+        {
+            "type": "path",
+            "url": "./packages/my-plugin"
+        }
+    ]
+}
+```
+
+NativePHP automatically:
+1. Discovers the `nativephp-plugin` type
+2. Reads `nativephp.json`
+3. Registers bridge functions
+4. Adds permissions to native projects
+5. Includes dependencies in builds
+6. Runs lifecycle hooks
+
+## Best Practices
+
+1. **Use descriptive namespaces**: `MyPlugin.Scan` not `M.S`
+2. **Document all bridge functions**: Users need to know what each does
+3. **Request minimal permissions**: Only what's actually needed
+4. **Handle errors gracefully**: Return meaningful error messages
+5. **Test on real devices**: Emulators don't always match real behavior
+6. **Version your manifest**: Update version when making changes

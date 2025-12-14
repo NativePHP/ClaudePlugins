@@ -9,6 +9,12 @@
       "source": "./nativephp-mobile",
       "description": "Comprehensive assistance for building iOS and Android apps with NativePHP Mobile",
       "version": "0.1.0"
+    },
+    {
+      "name": "nativephp-plugin-dev",
+      "source": "./nativephp-plugin-dev",
+      "description": "A Claude Code Plugin to assist you in building NativePHP Mobile Plugins",
+      "version": "0.1.0"
     }
   ]
 }
