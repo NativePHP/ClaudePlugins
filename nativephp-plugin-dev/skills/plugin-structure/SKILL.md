@@ -1,7 +1,7 @@
 ---
 name: NativePHP Plugin Structure
-description: This skill explains NativePHP plugin structure and configuration. Use when the user asks about "plugin structure", "nativephp.json", "plugin manifest", "composer.json setup", "service provider", "facade", "plugin directory layout", "bridge_functions array", "plugin permissions", "plugin dependencies", "plugin hooks", "copy_assets", or how to organize a NativePHP plugin package.
-version: 1.0.0
+description: This skill explains NativePHP plugin structure and configuration. Use when the user asks about "plugin structure", "nativephp.json", "plugin manifest", "composer.json setup", "service provider", "facade", "plugin directory layout", "bridge_functions array", "plugin permissions", "plugin dependencies", "plugin repositories", "custom maven repository", "plugin secrets", "environment variables", "placeholder substitution", "plugin hooks", "copy_assets", or how to organize a NativePHP plugin package.
+version: 1.0.1
 ---
 
 # NativePHP Plugin Structure
@@ -207,6 +207,11 @@ All Android-specific configuration goes under the `android` key:
         "android.permission.RECORD_AUDIO",
         "android.permission.VIBRATE"
     ],
+    "repositories": [
+        {
+            "url": "https://api.mapbox.com/downloads/v2/releases/maven"
+        }
+    ],
     "dependencies": {
         "implementation": [
             "com.google.mlkit:barcode-scanning:17.2.0",
@@ -221,8 +226,41 @@ All Android-specific configuration goes under the `android` key:
 ```
 
 **permissions**: Array of Android permission strings
+**repositories**: Custom Maven repositories (see below)
 **dependencies**: Gradle dependency strings (implementation, api, compileOnly, runtimeOnly)
 **activities/services/receivers/providers**: AndroidManifest.xml components
+
+#### repositories (Custom Maven Repositories)
+
+For SDKs not available on Maven Central or Google Maven (like Mapbox), add custom repositories:
+
+```json
+"android": {
+    "repositories": [
+        {
+            "url": "https://api.mapbox.com/downloads/v2/releases/maven"
+        }
+    ]
+}
+```
+
+For private repositories that require authentication:
+
+```json
+"android": {
+    "repositories": [
+        {
+            "url": "https://private.maven.example.com/releases",
+            "credentials": {
+                "username": "user",
+                "password": "${PRIVATE_SDK_TOKEN}"
+            }
+        }
+    ]
+}
+```
+
+The `${VAR}` syntax references environment variables from the user's `.env` file.
 
 #### ios section
 
@@ -251,6 +289,29 @@ All iOS-specific configuration goes under the `ios` key:
 **permissions**: Object mapping Info.plist keys to usage descriptions
 **dependencies**: Swift Package URLs with versions, or CocoaPods names
 
+#### secrets (Environment Variables)
+
+Plugins can declare required environment variables that users must provide in their `.env` file:
+
+```json
+"secrets": {
+    "MAPBOX_ACCESS_TOKEN": {
+        "description": "Public access token for Mapbox SDK (starts with pk.)",
+        "required": true
+    },
+    "MY_API_KEY": {
+        "description": "API key for the service",
+        "required": false
+    }
+}
+```
+
+**Build-time validation**: If a required secret is missing, the build fails with a helpful error message telling the user which secrets to add to their `.env` file.
+
+**Usage in manifest**: Reference secrets using `${VAR}` syntax in repositories, credentials, or assets:
+- `"password": "${PRIVATE_SDK_TOKEN}"` in repository credentials
+- `${MAPBOX_ACCESS_TOKEN}` in asset files (see below)
+
 #### assets section
 
 Static assets to copy during build are defined at the top level:
@@ -258,13 +319,26 @@ Static assets to copy during build are defined at the top level:
 ```json
 "assets": {
     "android": {
-        "model.tflite": "assets/model.tflite"
+        "android/res/values/mapbox_token.xml": "res/values/mapbox_token.xml"
     },
     "ios": {
         "model.mlmodel": "Resources/model.mlmodel"
     }
 }
 ```
+
+**Placeholder substitution**: Asset files can contain `${VAR}` placeholders that are automatically replaced with values from the user's `.env` file during the build.
+
+Example XML asset template (`resources/android/res/values/mapbox_token.xml`):
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="mapbox_access_token" translatable="false"
+            tools:ignore="UnusedResources">${MAPBOX_ACCESS_TOKEN}</string>
+</resources>
+```
+
+Supported file types for substitution: xml, json, txt, plist, strings, html, js, css, kt, swift, java
 
 Use `assets` for small static files. Use the `copy_assets` hook for large files, ML models, or files that need processing.
 
