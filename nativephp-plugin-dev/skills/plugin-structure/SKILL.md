@@ -97,13 +97,13 @@ This is the **most important file** in a NativePHP plugin. It tells NativePHP wh
     "bridge_functions": [
         {
             "name": "MyPlugin.Execute",
-            "android": "com.example.androidphp.bridge.plugins.myplugin.MyPluginFunctions.Execute",
+            "android": "com.myvendor.myplugin.MyPluginFunctions.Execute",
             "ios": "MyPluginFunctions.Execute",
             "description": "Executes the main plugin action"
         },
         {
             "name": "MyPlugin.GetStatus",
-            "android": "com.example.androidphp.bridge.plugins.myplugin.MyPluginFunctions.GetStatus",
+            "android": "com.myvendor.myplugin.MyPluginFunctions.GetStatus",
             "ios": "MyPluginFunctions.GetStatus",
             "description": "Gets the current status"
         }
@@ -182,7 +182,7 @@ Maps PHP method calls to native implementations:
 "bridge_functions": [
     {
         "name": "MyPlugin.Execute",
-        "android": "com.example.androidphp.bridge.plugins.myplugin.MyPluginFunctions.Execute",
+        "android": "com.myvendor.myplugin.MyPluginFunctions.Execute",
         "ios": "MyPluginFunctions.Execute",
         "description": "What this function does"
     }
@@ -412,7 +412,7 @@ Android activities, services, receivers, and providers are defined under `androi
 }
 ```
 
-**Name resolution**: Names starting with `.` become `{appId}.bridge.plugins.{namespace}.ClassName`
+**Name resolution**: Names starting with `.` are resolved from your plugin's package declaration (e.g., `.MyActivity` becomes `com.myvendor.myplugin.MyActivity` if your Kotlin files declare `package com.myvendor.myplugin`)
 
 ## Service Provider
 

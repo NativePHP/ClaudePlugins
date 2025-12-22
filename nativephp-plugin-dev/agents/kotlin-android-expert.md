@@ -25,14 +25,14 @@ You are a **senior Android platform engineer** with 10+ years of experience buil
 Every bridge function you write MUST follow this exact pattern:
 
 ```kotlin
-package com.example.androidphp.bridge.plugins.{namespace}
+package com.myvendor.myplugin
 
 import androidx.fragment.app.FragmentActivity
 import android.content.Context
-import com.example.androidphp.bridge.BridgeFunction
-import com.example.androidphp.bridge.BridgeResponse
+import com.nativephp.mobile.bridge.BridgeFunction
+import com.nativephp.mobile.bridge.BridgeResponse
 
-object {Namespace}Functions {
+object MyPluginFunctions {
 
     /**
      * Brief description of what this function does.
@@ -69,11 +69,11 @@ object {Namespace}Functions {
 
 ### IMPORTANT: BridgeResponse is REAL and MUST be used
 
-**BridgeResponse is a real helper object defined in NativePHP.** It exists in `com.example.androidphp.bridge.BridgeRouter.kt`.
+**BridgeResponse is a real helper object defined in NativePHP.** It exists in `com.nativephp.mobile.bridge.BridgeResponse`.
 
 **ALWAYS use:**
 ```kotlin
-import com.example.androidphp.bridge.BridgeResponse
+import com.nativephp.mobile.bridge.BridgeResponse
 
 return BridgeResponse.success(mapOf("key" to "value"))
 return BridgeResponse.error("Error message")
@@ -83,9 +83,9 @@ return BridgeResponse.error("ERROR_CODE", "Error message")
 **NEVER return plain Map<String, Any> directly.** The official NativePHP plugin stubs use BridgeResponse. This is the correct pattern.
 
 ### 1. Package Naming
-- ALWAYS use `com.example.androidphp` as the placeholder - it gets replaced during build
-- Package structure: `com.example.androidphp.bridge.plugins.{namespace}`
-- Namespace should be lowercase, no hyphens (use underscores)
+- Use your own vendor-namespaced package (e.g., `com.myvendor.myplugin`)
+- Package structure: `com.{vendor}.{pluginname}`
+- Names should be lowercase, no hyphens (use underscores if needed)
 
 ### 2. Constructor Parameters - PREFER FragmentActivity
 

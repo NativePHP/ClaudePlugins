@@ -18,7 +18,7 @@ Do NOT write code that returns plain `Map<String, Any>` or `[String: Any]` direc
 
 ### Kotlin
 ```kotlin
-import com.example.androidphp.bridge.BridgeResponse
+import com.nativephp.mobile.bridge.BridgeResponse
 
 // Success
 return BridgeResponse.success(mapOf("key" to "value"))
@@ -43,7 +43,7 @@ return BridgeResponse.error(code: "ERROR_CODE", message: "Error message")
 ```
 
 **BridgeResponse is defined in:**
-- Android: `com.example.androidphp.bridge.BridgeRouter.kt` (BridgeResponse object)
+- Android: `com.nativephp.mobile.bridge.BridgeResponse` (BridgeResponse object)
 - iOS: Built into the NativePHP bridge
 
 **The official NativePHP plugin stubs use BridgeResponse. Follow this pattern.**
@@ -55,12 +55,12 @@ return BridgeResponse.error(code: "ERROR_CODE", message: "Error message")
 ### Basic Template
 
 ```kotlin
-package com.example.androidphp.bridge.plugins.myplugin
+package com.myvendor.myplugin
 
 import androidx.fragment.app.FragmentActivity
 import android.content.Context
-import com.example.androidphp.bridge.BridgeFunction
-import com.example.androidphp.bridge.BridgeResponse
+import com.nativephp.mobile.bridge.BridgeFunction
+import com.nativephp.mobile.bridge.BridgeResponse
 
 object MyPluginFunctions {
 
@@ -113,13 +113,13 @@ object MyPluginFunctions {
 
 ### Package Naming
 
-ALWAYS use `com.example.androidphp` as the placeholder - it gets replaced during build:
+Use your own vendor-namespaced package for your plugin code:
 
 ```kotlin
-package com.example.androidphp.bridge.plugins.{namespace}
+package com.myvendor.myplugin
 ```
 
-Where `{namespace}` is lowercase, no hyphens (use underscores if needed).
+Where `myvendor` is your vendor name and `myplugin` is your plugin name (lowercase, no hyphens - use underscores if needed). This keeps your plugin code isolated from other plugins.
 
 ### Constructor Parameters - ALWAYS Use FragmentActivity
 
@@ -202,7 +202,7 @@ Events notify PHP when async operations complete:
 import android.os.Handler
 import android.os.Looper
 import org.json.JSONObject
-import com.example.androidphp.NativeActionCoordinator
+import com.nativephp.mobile.NativeActionCoordinator
 
 // MUST dispatch on main thread for JavaScript execution
 Handler(Looper.getMainLooper()).post {

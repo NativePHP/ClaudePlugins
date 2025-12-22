@@ -105,7 +105,7 @@ my-plugin/
     "bridge_functions": [
         {
             "name": "MyPlugin.Execute",
-            "android": "com.example.androidphp.bridge.plugins.myplugin.MyPluginFunctions.Execute",
+            "android": "com.myvendor.myplugin.MyPluginFunctions.Execute",
             "ios": "MyPluginFunctions.Execute",
             "description": "Execute the main action"
         }
@@ -159,11 +159,11 @@ Do NOT write code that returns plain `Map<String, Any>` (Kotlin) or `[String: An
 ## Kotlin Bridge Function Pattern
 
 ```kotlin
-package com.example.androidphp.bridge.plugins.myplugin
+package com.myvendor.myplugin
 
 import androidx.fragment.app.FragmentActivity
-import com.example.androidphp.bridge.BridgeFunction
-import com.example.androidphp.bridge.BridgeResponse
+import com.nativephp.mobile.bridge.BridgeFunction
+import com.nativephp.mobile.bridge.BridgeResponse
 
 object MyPluginFunctions {
 

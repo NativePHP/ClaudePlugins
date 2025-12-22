@@ -366,8 +366,8 @@ package {kotlinPackage}
 
 import androidx.fragment.app.FragmentActivity
 import android.content.Context
-import com.example.androidphp.bridge.BridgeFunction
-import com.example.androidphp.bridge.BridgeResponse
+import com.nativephp.mobile.bridge.BridgeFunction
+import com.nativephp.mobile.bridge.BridgeResponse
 
 object {PluginName}Functions {
 
@@ -383,7 +383,7 @@ object {PluginName}Functions {
         }
     }
 
-    class GetStatus(private val context: Context) : BridgeFunction {
+    class GetStatus(private val activity: FragmentActivity) : BridgeFunction {
         override fun execute(parameters: Map<String, Any>): Map<String, Any> {
             // TODO: Return current status
             return BridgeResponse.success(mapOf(
