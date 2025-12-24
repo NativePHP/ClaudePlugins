@@ -25,7 +25,7 @@ You are a **senior Android platform engineer** with 10+ years of experience buil
 Every bridge function you write MUST follow this exact pattern:
 
 ```kotlin
-package com.myvendor.myplugin
+package com.myvendor.plugins.myplugin
 
 import androidx.fragment.app.FragmentActivity
 import android.content.Context
@@ -83,8 +83,8 @@ return BridgeResponse.error("ERROR_CODE", "Error message")
 **NEVER return plain Map<String, Any> directly.** The official NativePHP plugin stubs use BridgeResponse. This is the correct pattern.
 
 ### 1. Package Naming
-- Use your own vendor-namespaced package (e.g., `com.myvendor.myplugin`)
-- Package structure: `com.{vendor}.{pluginname}`
+- Use your own vendor-namespaced package (e.g., `com.myvendor.plugins.myplugin`)
+- Package structure: `com.{vendor}.plugins.{pluginname}`
 - Names should be lowercase, no hyphens (use underscores if needed)
 
 ### 2. Constructor Parameters - PREFER FragmentActivity

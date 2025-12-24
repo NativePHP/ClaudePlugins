@@ -1,7 +1,7 @@
 ---
 name: NativePHP Plugin Structure
 description: This skill explains NativePHP plugin structure and configuration. Use when the user asks about "plugin structure", "nativephp.json", "plugin manifest", "composer.json setup", "service provider", "facade", "plugin directory layout", "bridge_functions array", "plugin permissions", "plugin dependencies", "plugin repositories", "custom maven repository", "plugin secrets", "environment variables", "placeholder substitution", "plugin hooks", "copy_assets", or how to organize a NativePHP plugin package.
-version: 1.0.1
+version: 1.0.2
 ---
 
 # NativePHP Plugin Structure
@@ -83,27 +83,26 @@ The Composer manifest must declare the package type as `nativephp-plugin`:
 
 ## nativephp.json - The Plugin Manifest
 
-This is the **most important file** in a NativePHP plugin. It tells NativePHP what the plugin provides.
+This is the **most important file** in a NativePHP plugin. It tells NativePHP what native functionality the plugin provides.
+
+**Important**: Package metadata (`name`, `version`, `description`, `service_provider`) comes from `composer.json` — don't duplicate it here. The manifest only contains native-specific configuration.
 
 ### Complete Template
 
 ```json
 {
-    "name": "vendor/my-plugin",
-    "version": "1.0.0",
-    "description": "What this plugin does",
     "namespace": "MyPlugin",
 
     "bridge_functions": [
         {
             "name": "MyPlugin.Execute",
-            "android": "com.myvendor.myplugin.MyPluginFunctions.Execute",
+            "android": "com.myvendor.plugins.myplugin.MyPluginFunctions.Execute",
             "ios": "MyPluginFunctions.Execute",
             "description": "Executes the main plugin action"
         },
         {
             "name": "MyPlugin.GetStatus",
-            "android": "com.myvendor.myplugin.MyPluginFunctions.GetStatus",
+            "android": "com.myvendor.plugins.myplugin.MyPluginFunctions.GetStatus",
             "ios": "MyPluginFunctions.GetStatus",
             "description": "Gets the current status"
         }
@@ -130,11 +129,11 @@ This is the **most important file** in a NativePHP plugin. It tells NativePHP wh
         ],
         "services": [],
         "receivers": [],
-        "providers": [],
+        "providers": []
     },
 
     "ios": {
-        "permissions": {
+        "info_plist": {
             "NSCameraUsageDescription": "This plugin needs camera access to scan barcodes"
         },
         "dependencies": {
@@ -166,9 +165,7 @@ This is the **most important file** in a NativePHP plugin. It tells NativePHP wh
 
     "hooks": {
         "copy_assets": "nativephp:my-plugin:copy-assets"
-    },
-
-    "service_provider": "Vendor\\MyPlugin\\MyPluginServiceProvider"
+    }
 }
 ```
 
@@ -182,7 +179,7 @@ Maps PHP method calls to native implementations:
 "bridge_functions": [
     {
         "name": "MyPlugin.Execute",
-        "android": "com.myvendor.myplugin.MyPluginFunctions.Execute",
+        "android": "com.myvendor.plugins.myplugin.MyPluginFunctions.Execute",
         "ios": "MyPluginFunctions.Execute",
         "description": "What this function does"
     }
@@ -268,9 +265,10 @@ All iOS-specific configuration goes under the `ios` key:
 
 ```json
 "ios": {
-    "permissions": {
+    "info_plist": {
         "NSCameraUsageDescription": "Explain why camera is needed",
-        "NSMicrophoneUsageDescription": "Explain why microphone is needed"
+        "NSMicrophoneUsageDescription": "Explain why microphone is needed",
+        "MBXAccessToken": "${MAPBOX_ACCESS_TOKEN}"
     },
     "dependencies": {
         "swift_packages": [
@@ -286,8 +284,10 @@ All iOS-specific configuration goes under the `ios` key:
 }
 ```
 
-**permissions**: Object mapping Info.plist keys to usage descriptions
+**info_plist**: Object mapping Info.plist keys to values (permissions, API tokens, config)
 **dependencies**: Swift Package URLs with versions, or CocoaPods names
+
+Use `${ENV_VAR}` placeholders for sensitive values like API tokens.
 
 #### secrets (Environment Variables)
 
@@ -412,7 +412,7 @@ Android activities, services, receivers, and providers are defined under `androi
 }
 ```
 
-**Name resolution**: Names starting with `.` are resolved from your plugin's package declaration (e.g., `.MyActivity` becomes `com.myvendor.myplugin.MyActivity` if your Kotlin files declare `package com.myvendor.myplugin`)
+**Name resolution**: Names starting with `.` are resolved from your plugin's package declaration (e.g., `.MyActivity` becomes `com.myvendor.plugins.myplugin.MyActivity` if your Kotlin files declare `package com.myvendor.plugins.myplugin`)
 
 ## Service Provider
 
@@ -582,47 +582,58 @@ class CopyAssetsCommand extends NativePluginHookCommand
 
 ### Android (Kotlin)
 
-Place in: `resources/android/src/`
+Place Kotlin files directly in `resources/android/`:
 
 ```
-resources/android/src/
+resources/android/
 └── MyPluginFunctions.kt
 ```
 
-Or with subdirectories:
+Or with subdirectories for additional files:
 ```
-resources/android/src/
+resources/android/
 ├── MyPluginFunctions.kt
 └── activities/
     └── ScannerActivity.kt
 ```
 
+**Package naming**: Use `com.{vendor}.plugins.{pluginname}` format:
+```kotlin
+package com.myvendor.plugins.myplugin
+```
+
+**Note**: The nested `resources/android/src/` structure is also supported for backward compatibility.
+
 ### iOS (Swift)
 
-Place in: `resources/ios/Sources/`
+Place Swift files directly in `resources/ios/`:
 
 ```
-resources/ios/Sources/
+resources/ios/
 └── MyPluginFunctions.swift
 ```
 
-Or with subdirectories:
+Or with subdirectories for additional files:
 ```
-resources/ios/Sources/
+resources/ios/
 ├── MyPluginFunctions.swift
 └── ViewControllers/
     └── ScannerViewController.swift
 ```
 
+**Note**: The nested `resources/ios/Sources/` structure is also supported for backward compatibility.
+
 ## Registering with the App
 
-After creating your plugin, users install it with:
+After creating your plugin, users must install and explicitly register it.
+
+### Step 1: Install the Plugin
 
 ```bash
 composer require vendor/my-plugin
 ```
 
-Then in their app's `composer.json`, they may need to add a path repository if developing locally:
+For local development, add a path repository to `composer.json`:
 
 ```json
 {
@@ -635,7 +646,60 @@ Then in their app's `composer.json`, they may need to add a path repository if d
 }
 ```
 
-NativePHP automatically:
+### Step 2: Publish the Plugins Provider (First Time Only)
+
+```bash
+php artisan vendor:publish --tag=nativephp-plugins-provider
+```
+
+This creates `app/Providers/NativePluginsServiceProvider.php`.
+
+### Step 3: Register the Plugin
+
+```bash
+php artisan native:plugin:register vendor/my-plugin
+```
+
+This automatically adds the plugin's service provider to your `plugins()` array:
+
+```php
+public function plugins(): array
+{
+    return [
+        \Vendor\MyPlugin\MyPluginServiceProvider::class,
+    ];
+}
+```
+
+### Step 4: Verify Registration
+
+```bash
+# Show registered plugins
+php artisan native:plugin:list
+
+# Show all installed plugins (including unregistered)
+php artisan native:plugin:list --all
+```
+
+### Why Explicit Registration?
+
+This is a security measure. It prevents transitive dependencies from automatically registering plugins without user consent. Only plugins explicitly listed in the provider are compiled into native builds.
+
+### Removing a Plugin
+
+To unregister a plugin from the app (but keep it installed):
+```bash
+php artisan native:plugin:register vendor/my-plugin --remove
+```
+
+To completely uninstall a plugin (unregister + remove code + composer remove):
+```bash
+php artisan native:plugin:uninstall vendor/my-plugin
+```
+
+### What Happens After Registration
+
+Once registered, NativePHP automatically:
 1. Discovers the `nativephp-plugin` type
 2. Reads `nativephp.json`
 3. Registers bridge functions

@@ -55,7 +55,7 @@ return BridgeResponse.error(code: "ERROR_CODE", message: "Error message")
 ### Basic Template
 
 ```kotlin
-package com.myvendor.myplugin
+package com.myvendor.plugins.myplugin
 
 import androidx.fragment.app.FragmentActivity
 import android.content.Context
@@ -116,10 +116,10 @@ object MyPluginFunctions {
 Use your own vendor-namespaced package for your plugin code:
 
 ```kotlin
-package com.myvendor.myplugin
+package com.myvendor.plugins.myplugin
 ```
 
-Where `myvendor` is your vendor name and `myplugin` is your plugin name (lowercase, no hyphens - use underscores if needed). This keeps your plugin code isolated from other plugins.
+Where `myvendor` is your vendor name and `myplugin` is your plugin name (lowercase, no hyphens - use underscores if needed). The `plugins` segment groups all your plugins together. This keeps your plugin code isolated from other plugins.
 
 ### Constructor Parameters - ALWAYS Use FragmentActivity
 

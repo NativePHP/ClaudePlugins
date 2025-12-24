@@ -87,25 +87,28 @@ my-plugin/
 │       └── CopyAssetsCommand.php     # Lifecycle hooks
 ├── resources/
 │   ├── js/                           # Frontend helpers
-│   ├── android/src/                  # Kotlin code
-│   └── ios/Sources/                  # Swift code
+│   ├── android/                      # Kotlin code (flat structure preferred)
+│   │   └── MyPluginFunctions.kt
+│   └── ios/                          # Swift code (flat structure preferred)
+│       └── MyPluginFunctions.swift
 ```
+
+**Note**: Both flat (`resources/android/`) and nested (`resources/android/src/`) structures are supported for backward compatibility.
 
 ---
 
 ## Manifest Specification (nativephp.json)
 
+**Important**: Package metadata (`name`, `version`, `description`, `service_provider`) comes from `composer.json` — don't duplicate it here. The manifest only contains native-specific configuration.
+
 ```json
 {
-    "name": "vendor/plugin-name",
-    "version": "1.0.0",
-    "description": "Plugin description",
     "namespace": "MyPlugin",
 
     "bridge_functions": [
         {
             "name": "MyPlugin.Execute",
-            "android": "com.myvendor.myplugin.MyPluginFunctions.Execute",
+            "android": "com.myvendor.plugins.myplugin.MyPluginFunctions.Execute",
             "ios": "MyPluginFunctions.Execute",
             "description": "Execute the main action"
         }
@@ -113,25 +116,29 @@ my-plugin/
 
     "android": {
         "permissions": ["android.permission.CAMERA"],
+        "repositories": [],
         "dependencies": {
             "implementation": ["com.google.mlkit:barcode-scanning:17.2.0"]
         },
         "activities": [],
         "services": [],
         "receivers": [],
-        "providers": [],
-        "assets": {}
+        "providers": []
     },
 
     "ios": {
-        "permissions": {
+        "info_plist": {
             "NSCameraUsageDescription": "Explain why camera is needed"
         },
         "dependencies": {
             "swift_packages": [{"url": "https://...", "version": "1.0.0"}],
             "pods": []
-        },
-        "assets": {}
+        }
+    },
+
+    "assets": {
+        "android": {},
+        "ios": {}
     },
 
     "events": ["Vendor\\MyPlugin\\Events\\ActionCompleted"],
@@ -140,7 +147,12 @@ my-plugin/
         "copy_assets": "nativephp:my-plugin:copy-assets"
     },
 
-    "service_provider": "Vendor\\MyPlugin\\MyPluginServiceProvider"
+    "secrets": {
+        "MY_API_KEY": {
+            "description": "API key for the service",
+            "required": false
+        }
+    }
 }
 ```
 
@@ -159,7 +171,7 @@ Do NOT write code that returns plain `Map<String, Any>` (Kotlin) or `[String: An
 ## Kotlin Bridge Function Pattern
 
 ```kotlin
-package com.myvendor.myplugin
+package com.myvendor.plugins.myplugin
 
 import androidx.fragment.app.FragmentActivity
 import com.nativephp.mobile.bridge.BridgeFunction

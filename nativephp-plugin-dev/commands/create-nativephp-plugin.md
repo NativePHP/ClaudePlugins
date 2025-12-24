@@ -23,7 +23,7 @@ The user provides a plugin name in `vendor/plugin-name` format: `$ARGUMENTS`
 3. Convert to appropriate formats:
    - Composer name: `vendor/plugin-name` (lowercase, hyphenated)
    - PHP Namespace: `Vendor\PluginName` (PascalCase, strip "plugin-" prefix)
-   - Kotlin Package: `com.vendor.plugin.pluginname` (lowercase, underscores instead of hyphens)
+   - Kotlin Package: `com.vendor.plugins.pluginname` (lowercase, underscores instead of hyphens)
    - Directory: `plugin-name`
    - Namespace: `PluginName` (PascalCase, strip "plugin-" prefix)
 
@@ -120,32 +120,11 @@ plugin-name/
 
 ### nativephp.json
 
+Package metadata (`name`, `version`, `description`, `service_provider`) comes from `composer.json` — don't duplicate it here. The manifest only contains native-specific configuration.
+
 ```json
 {
-    "name": "{vendor}/{plugin-name}",
-    "version": "1.0.0",
-    "description": "A NativePHP plugin",
     "namespace": "{PluginName}",
-
-    "keywords": [],
-    "category": "utilities",
-    "license": "MIT",
-    "pricing": {
-        "type": "free"
-    },
-    "author": {
-        "name": "Your Name",
-        "email": "you@example.com",
-        "url": ""
-    },
-    "homepage": "",
-    "repository": "",
-    "funding": [],
-
-    "platforms": ["android", "ios"],
-
-    "icon": "resources/icon.png",
-    "screenshots": [],
 
     "bridge_functions": [
         {
@@ -170,23 +149,21 @@ plugin-name/
         "activities": [],
         "services": [],
         "receivers": [],
-        "providers": [],
-        "assets": {}
+        "providers": []
     },
 
     "ios": {
-        "permissions": {},
+        "info_plist": {},
         "dependencies": {
             "swift_packages": [],
             "pods": []
-        },
-        "assets": {}
+        }
     },
 
     "events": [
         "{Vendor}\\{PluginName}\\Events\\{PluginName}Completed"
     ],
-    "service_provider": "{Vendor}\\{PluginName}\\{PluginName}ServiceProvider",
+
     "hooks": {
         "copy_assets": "nativephp:{kebab-plugin-name}:copy-assets"
     }
@@ -494,7 +471,17 @@ A NativePHP plugin.
 ### Installation
 
 ```bash
+# Install the package
 composer require {vendor}/{plugin-name}
+
+# Publish the plugins provider (first time only)
+php artisan vendor:publish --tag=nativephp-plugins-provider
+
+# Register the plugin (adds \{Vendor}\{PluginName}\{PluginName}ServiceProvider::class)
+php artisan native:plugin:register {vendor}/{plugin-name}
+
+# Verify registration
+php artisan native:plugin:list
 ```
 
 ### PHP Usage (Livewire/Blade)
@@ -581,7 +568,7 @@ describe('Plugin Manifest', function () {
     it('has required fields', function () {
         $manifest = json_decode(file_get_contents($this->manifestPath), true);
 
-        expect($manifest)->toHaveKeys(['name', 'namespace', 'bridge_functions']);
+        expect($manifest)->toHaveKeys(['namespace', 'bridge_functions']);
     });
 
     it('has valid bridge functions', function () {
@@ -649,8 +636,20 @@ A NativePHP plugin.
 ## Installation
 
 ```bash
+# Install the package
 composer require {vendor}/{plugin-name}
+
+# Publish the plugins provider (first time only)
+php artisan vendor:publish --tag=nativephp-plugins-provider
+
+# Register the plugin (adds the service provider to your NativePluginsServiceProvider)
+php artisan native:plugin:register {vendor}/{plugin-name}
+
+# Verify registration
+php artisan native:plugin:list
 ```
+
+This adds `\{Vendor}\{PluginName}\{PluginName}ServiceProvider::class` to your `plugins()` array.
 
 ## Usage
 
@@ -697,9 +696,11 @@ MIT
    - Implement native functions in `resources/android/` and `resources/ios/`
    - Edit `nativephp.json` to add permissions and dependencies
    - Customize the copy_assets hook in `src/Commands/CopyAssetsCommand.php`
-3. Show how to install:
+3. Show how to install and register:
    - Add to composer.json repositories: `{"type": "path", "url": "./packages/{vendor}/{plugin-name}"}`
    - Run `composer require {vendor}/{plugin-name}`
+   - Publish provider (first time): `php artisan vendor:publish --tag=nativephp-plugins-provider`
+   - Register plugin: `php artisan native:plugin:register {vendor}/{plugin-name}` (this adds the service provider class to NativePluginsServiceProvider)
    - Verify with `php artisan native:plugin:list`
 
 ## Important Notes

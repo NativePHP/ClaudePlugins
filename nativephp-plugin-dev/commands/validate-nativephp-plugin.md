@@ -30,31 +30,33 @@ First, locate the plugin to validate:
 Read and validate the manifest:
 
 **Required fields:**
-- [ ] `name` - Must be `vendor/plugin-name` format
-- [ ] `version` - Must be valid semver
 - [ ] `namespace` - Must be PascalCase
 - [ ] `bridge_functions` - Must be array (can be empty)
 
+**Note**: Package metadata (`name`, `version`, `description`) comes from `composer.json`, not the manifest.
+
 **Bridge function validation (for each function):**
 - [ ] `name` - Must be `Namespace.Action` format
-- [ ] `android` - Must be full class path
-- [ ] `ios` - Must be `EnumName.ClassName` format
+- [ ] `android` - Must be full class path (e.g., `com.vendor.plugins.myplugin.MyPluginFunctions.Execute`)
+- [ ] `ios` - Must be `EnumName.ClassName` format (e.g., `MyPluginFunctions.Execute`)
 - [ ] `description` - Should exist for documentation
 
-**Optional sections validation:**
-- [ ] `permissions.android` - If present, must be array of valid permission strings
-- [ ] `permissions.ios` - If present, must be object with valid Info.plist keys
-- [ ] `dependencies.android.implementation` - If present, must be array
-- [ ] `dependencies.ios.swift_packages` - If present, must be array of objects with `url` and `version`
-- [ ] `dependencies.ios.pods` - If present, must be array of strings
+**Platform sections validation:**
+- [ ] `android.permissions` - If present, must be array of valid permission strings
+- [ ] `android.dependencies.implementation` - If present, must be array of gradle dependencies
+- [ ] `android.repositories` - If present, must be array of repository objects with `url`
+- [ ] `ios.info_plist` - If present, must be object with valid Info.plist keys
+- [ ] `ios.dependencies.swift_packages` - If present, must be array of objects with `url` and `version`
+- [ ] `ios.dependencies.pods` - If present, must be array of strings
 - [ ] `events` - If present, must be array of fully-qualified class names
+- [ ] `secrets` - If present, must be object with description and required flag
 
 ### 3. Composer Validation (composer.json)
 
 Read and validate:
 
 - [ ] `type` - Must be `"nativephp-plugin"`
-- [ ] `name` - Must match `nativephp.json` name
+- [ ] `name` - Must be `vendor/plugin-name` format
 - [ ] `require.nativephp/mobile` - Should be present
 - [ ] `autoload.psr-4` - Must define namespace matching manifest
 - [ ] `extra.laravel.providers` - Should register the service provider
@@ -63,7 +65,7 @@ Read and validate:
 ### 4. PHP Code Validation
 
 **Service Provider:**
-- [ ] File exists at path matching `service_provider` in manifest
+- [ ] File exists at path matching provider in `composer.json` extra.laravel.providers
 - [ ] Extends `ServiceProvider`
 - [ ] Has `register()` method
 - [ ] Registers the main class as singleton
@@ -87,16 +89,16 @@ Read and validate:
 ### 5. Native Code Validation
 
 **Kotlin (Android):**
-- [ ] File exists at `resources/android/src/{Namespace}Functions.kt`
-- [ ] Package is `com.example.androidphp.bridge.plugins.{namespace}`
+- [ ] File exists at `resources/android/{Namespace}Functions.kt` (or `resources/android/src/` for legacy structure)
+- [ ] Package follows `com.{vendor}.plugins.{pluginname}` format
 - [ ] Object name matches `{Namespace}Functions`
 - [ ] Each bridge function has matching class
-- [ ] Classes implement `BridgeFunction`
+- [ ] Classes implement `BridgeFunction` from `com.nativephp.mobile.bridge`
 - [ ] `execute()` method returns `Map<String, Any>`
 - [ ] Uses `BridgeResponse.success()` or `BridgeResponse.error()`
 
 **Swift (iOS):**
-- [ ] File exists at `resources/ios/Sources/{Namespace}Functions.swift`
+- [ ] File exists at `resources/ios/{Namespace}Functions.swift` (or `resources/ios/Sources/` for legacy structure)
 - [ ] Enum name matches `{Namespace}Functions`
 - [ ] Each bridge function has matching class
 - [ ] Classes conform to `BridgeFunction`

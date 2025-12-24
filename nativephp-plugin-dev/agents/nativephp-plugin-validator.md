@@ -44,30 +44,29 @@ Gather:
 #### Manifest Validation (nativephp.json)
 
 **Required fields:**
-- `name` - Must be `vendor/plugin-name` format
-- `version` - Must be valid semver (X.Y.Z)
 - `namespace` - Must be PascalCase, no hyphens
 - `bridge_functions` - Must be array
 
+**Note**: Package metadata (`name`, `version`, `description`) comes from `composer.json`, not the manifest.
+
 **Bridge function validation:**
 - `name` - Must be `Namespace.Action` format
-- `android` - Must be full class path starting with `com.example.androidphp`
-- `ios` - Must be `EnumName.ClassName` format
+- `android` - Must be full class path (e.g., `com.vendor.plugins.myplugin.MyPluginFunctions.Execute`)
+- `ios` - Must be `EnumName.ClassName` format (e.g., `MyPluginFunctions.Execute`)
 - `description` - Should exist
 
-**Permission validation:**
-- Android permissions must be valid `android.permission.*` strings
-- iOS permissions must be valid Info.plist keys with descriptions
-
-**Dependency validation:**
-- Android implementation strings should look like Gradle dependencies
-- iOS swift_packages must have `url` and `version`
-- iOS pods must be strings
+**Platform section validation (android/ios nested keys):**
+- `android.permissions` must be valid `android.permission.*` strings
+- `ios.info_plist` must be valid Info.plist keys with descriptions
+- `android.dependencies.implementation` should look like Gradle dependencies
+- `ios.dependencies.swift_packages` must have `url` and `version`
+- `ios.dependencies.pods` must be strings
+- `secrets` - Environment variables with description and required flag
 
 #### Composer Validation (composer.json)
 
 - `type` MUST be `"nativephp-plugin"`
-- `name` should match manifest name
+- `name` must be `vendor/plugin-name` format
 - `require` should include `nativephp/mobile`
 - `autoload.psr-4` should define correct namespace
 - `extra.laravel.providers` should register service provider
@@ -96,13 +95,13 @@ Gather:
 
 #### Kotlin Code Validation
 
-**File location:** `resources/android/src/{Namespace}Functions.kt`
+**File location:** `resources/android/{Namespace}Functions.kt` (or `resources/android/src/` for legacy)
 
 **Checks:**
-- Package is `com.example.androidphp.bridge.plugins.{namespace}`
+- Package follows `com.{vendor}.plugins.{pluginname}` format
 - Object named `{Namespace}Functions`
 - Each bridge function has matching inner class
-- Classes implement `BridgeFunction`
+- Classes implement `BridgeFunction` from `com.nativephp.mobile.bridge`
 - `execute()` method signature is correct
 - Returns `Map<String, Any>`
 - Uses `BridgeResponse.success()` or `BridgeResponse.error()`
@@ -110,7 +109,7 @@ Gather:
 
 #### Swift Code Validation
 
-**File location:** `resources/ios/Sources/{Namespace}Functions.swift`
+**File location:** `resources/ios/{Namespace}Functions.swift` (or `resources/ios/Sources/` for legacy)
 
 **Checks:**
 - Enum named `{Namespace}Functions`
