@@ -19,28 +19,27 @@ Do NOT write code that returns plain `Map<String, Any>` or `[String: Any]` direc
 ### Kotlin
 ```kotlin
 import com.nativephp.mobile.bridge.BridgeResponse
+import com.nativephp.mobile.bridge.BridgeError
 
 // Success
 return BridgeResponse.success(mapOf("key" to "value"))
 
-// Error (simple)
-return BridgeResponse.error("Error message")
-
-// Error (with code)
-return BridgeResponse.error("ERROR_CODE", "Error message")
+// Error (always use BridgeError with code and message)
+return BridgeResponse.error(BridgeError("ERROR_CODE", "Error message"))
 ```
+
+**IMPORTANT: Android BridgeResponse.error requires a `BridgeError` object with both `code` and `message` parameters.**
 
 ### Swift
 ```swift
 // Success
 return BridgeResponse.success(data: ["key": "value"])
 
-// Error (simple)
-return BridgeResponse.error("Error message")
-
-// Error (with code)
+// Error (always include code and message)
 return BridgeResponse.error(code: "ERROR_CODE", message: "Error message")
 ```
+
+**IMPORTANT: iOS BridgeResponse.error ALWAYS requires both `code` and `message` parameters.**
 
 **BridgeResponse is defined in:**
 - Android: `com.nativephp.mobile.bridge.BridgeResponse` (BridgeResponse object)
@@ -61,6 +60,7 @@ import androidx.fragment.app.FragmentActivity
 import android.content.Context
 import com.nativephp.mobile.bridge.BridgeFunction
 import com.nativephp.mobile.bridge.BridgeResponse
+import com.nativephp.mobile.bridge.BridgeError
 
 object MyPluginFunctions {
 
@@ -77,7 +77,7 @@ object MyPluginFunctions {
         override fun execute(parameters: Map<String, Any>): Map<String, Any> {
             // 1. Extract and validate parameters
             val param1 = parameters["param1"] as? String
-                ?: return BridgeResponse.error("param1 is required")
+                ?: return BridgeResponse.error(BridgeError("INVALID_PARAMETERS", "param1 is required"))
 
             // 2. Perform the native operation
             try {
@@ -88,7 +88,7 @@ object MyPluginFunctions {
                     "result" to result
                 ))
             } catch (e: Exception) {
-                return BridgeResponse.error(e.message ?: "Unknown error")
+                return BridgeResponse.error(BridgeError("OPERATION_FAILED", e.message ?: "Unknown error"))
             }
         }
 
@@ -144,11 +144,11 @@ class MyFunction(private val activity: FragmentActivity) : BridgeFunction {
 ```kotlin
 // Required string
 val name = parameters["name"] as? String
-    ?: return BridgeResponse.error("name is required")
+    ?: return BridgeResponse.error(BridgeError("INVALID_PARAMETERS", "name is required"))
 
 // Required number (always comes as Number)
 val count = (parameters["count"] as? Number)?.toInt()
-    ?: return BridgeResponse.error("count is required")
+    ?: return BridgeResponse.error(BridgeError("INVALID_PARAMETERS", "count is required"))
 
 // Optional with default
 val quality = (parameters["quality"] as? Number)?.toInt() ?: 80
@@ -187,11 +187,11 @@ return BridgeResponse.success(mapOf(
     )
 ))
 
-// Simple error
-return BridgeResponse.error("Something went wrong")
+// Error (always use BridgeError with code and message)
+return BridgeResponse.error(BridgeError("OPERATION_FAILED", "Something went wrong"))
 
-// Error with code
-return BridgeResponse.error("FILE_NOT_FOUND", "The specified file does not exist")
+// Error with specific code
+return BridgeResponse.error(BridgeError("FILE_NOT_FOUND", "The specified file does not exist"))
 ```
 
 ### Event Dispatching (Kotlin)
@@ -327,7 +327,7 @@ class RequiresCamera(private val activity: FragmentActivity) : BridgeFunction {
     override fun execute(parameters: Map<String, Any>): Map<String, Any> {
         if (ContextCompat.checkSelfPermission(activity, Manifest.permission.CAMERA)
             != PackageManager.PERMISSION_GRANTED) {
-            return BridgeResponse.error("PERMISSION_DENIED", "Camera permission required")
+            return BridgeResponse.error(BridgeError("PERMISSION_DENIED", "Camera permission required"))
         }
 
         // Proceed with camera operation
@@ -358,7 +358,7 @@ enum MyPluginFunctions {
         func execute(parameters: [String: Any]) throws -> [String: Any] {
             // 1. Extract and validate parameters
             guard let param1 = parameters["param1"] as? String else {
-                return BridgeResponse.error("param1 is required")
+                return BridgeResponse.error(code: "INVALID_PARAMETERS", message: "param1 is required")
             }
 
             // 2. Perform the native operation
@@ -370,7 +370,7 @@ enum MyPluginFunctions {
                     "result": result
                 ])
             } catch {
-                return BridgeResponse.error(error.localizedDescription)
+                return BridgeResponse.error(code: "OPERATION_FAILED", message: error.localizedDescription)
             }
         }
 
@@ -401,12 +401,12 @@ enum MyPluginFunctions {
 ```swift
 // Required string
 guard let name = parameters["name"] as? String else {
-    return BridgeResponse.error("name is required")
+    return BridgeResponse.error(code: "INVALID_PARAMETERS", message: "name is required")
 }
 
 // Required number
 guard let count = parameters["count"] as? Int else {
-    return BridgeResponse.error("count is required")
+    return BridgeResponse.error(code: "INVALID_PARAMETERS", message: "count is required")
 }
 
 // Optional with default
@@ -457,10 +457,10 @@ return BridgeResponse.success(data: [
     ]
 ])
 
-// Simple error
-return BridgeResponse.error("Something went wrong")
+// Error (always include code and message)
+return BridgeResponse.error(code: "OPERATION_FAILED", message: "Something went wrong")
 
-// Error with code
+// Error with specific code
 return BridgeResponse.error(code: "FILE_NOT_FOUND", message: "The specified file does not exist")
 ```
 
@@ -564,7 +564,7 @@ class OpenScanner: BridgeFunction {
         // Get the key window's root view controller
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let rootVC = windowScene.windows.first?.rootViewController else {
-            return BridgeResponse.error("Cannot present view controller")
+            return BridgeResponse.error(code: "VIEW_CONTROLLER_ERROR", message: "Cannot present view controller")
         }
 
         // Find the topmost presented controller
@@ -634,7 +634,7 @@ class RequiresCamera: BridgeFunction {
             )
 
         @unknown default:
-            return BridgeResponse.error("Unknown permission status")
+            return BridgeResponse.error(code: "UNKNOWN_STATUS", message: "Unknown permission status")
         }
     }
 }

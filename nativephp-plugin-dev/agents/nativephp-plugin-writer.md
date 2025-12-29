@@ -176,24 +176,27 @@ package com.myvendor.plugins.myplugin
 import androidx.fragment.app.FragmentActivity
 import com.nativephp.mobile.bridge.BridgeFunction
 import com.nativephp.mobile.bridge.BridgeResponse
+import com.nativephp.mobile.bridge.BridgeError
 
 object MyPluginFunctions {
 
     class Execute(private val activity: FragmentActivity) : BridgeFunction {
         override fun execute(parameters: Map<String, Any>): Map<String, Any> {
             val param1 = parameters["param1"] as? String
-                ?: return BridgeResponse.error("param1 is required")
+                ?: return BridgeResponse.error(BridgeError("INVALID_PARAMETERS", "param1 is required"))
 
             try {
                 // Native logic
                 return BridgeResponse.success(mapOf("result" to "value"))
             } catch (e: Exception) {
-                return BridgeResponse.error(e.message ?: "Unknown error")
+                return BridgeResponse.error(BridgeError("OPERATION_FAILED", e.message ?: "Unknown error"))
             }
         }
     }
 }
 ```
+
+**IMPORTANT: Android BridgeResponse.error requires a `BridgeError` object with both `code` and `message` parameters.**
 
 ---
 
@@ -207,18 +210,20 @@ enum MyPluginFunctions {
     class Execute: BridgeFunction {
         func execute(parameters: [String: Any]) throws -> [String: Any] {
             guard let param1 = parameters["param1"] as? String else {
-                return BridgeResponse.error("param1 is required")
+                return BridgeResponse.error(code: "INVALID_PARAMETERS", message: "param1 is required")
             }
 
             do {
                 // Native logic
                 return BridgeResponse.success(data: ["result": "value"])
             } catch {
-                return BridgeResponse.error(error.localizedDescription)
+                return BridgeResponse.error(code: "OPERATION_FAILED", message: error.localizedDescription)
             }
         }
     }
 }
+
+**IMPORTANT: iOS BridgeResponse.error ALWAYS requires both `code` and `message` parameters.**
 ```
 
 ---

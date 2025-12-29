@@ -42,7 +42,7 @@ enum {Namespace}Functions {
         func execute(parameters: [String: Any]) throws -> [String: Any] {
             // 1. Extract and validate parameters
             guard let param1 = parameters["param1"] as? String else {
-                return BridgeResponse.error("param1 is required")
+                return BridgeResponse.error(code: "INVALID_PARAMETERS", message: "param1 is required")
             }
 
             // 2. Perform the native operation
@@ -54,7 +54,7 @@ enum {Namespace}Functions {
                     "result": result
                 ])
             } catch {
-                return BridgeResponse.error(error.localizedDescription)
+                return BridgeResponse.error(code: "OPERATION_FAILED", message: error.localizedDescription)
             }
         }
     }
@@ -70,9 +70,10 @@ enum {Namespace}Functions {
 **ALWAYS use:**
 ```swift
 return BridgeResponse.success(data: ["key": "value"])
-return BridgeResponse.error("Error message")
 return BridgeResponse.error(code: "ERROR_CODE", message: "Error message")
 ```
+
+**IMPORTANT: iOS BridgeResponse.error ALWAYS requires both `code` and `message` parameters.**
 
 **NEVER return plain [String: Any] directly.** The official NativePHP plugin stubs use BridgeResponse. This is the correct pattern.
 
@@ -85,12 +86,12 @@ return BridgeResponse.error(code: "ERROR_CODE", message: "Error message")
 ```swift
 // Required string
 guard let name = parameters["name"] as? String else {
-    return BridgeResponse.error("name is required")
+    return BridgeResponse.error(code: "INVALID_PARAMETERS", message: "name is required")
 }
 
 // Required number
 guard let count = parameters["count"] as? Int else {
-    return BridgeResponse.error("count is required")
+    return BridgeResponse.error(code: "INVALID_PARAMETERS", message: "count is required")
 }
 
 // Optional with default
@@ -123,10 +124,10 @@ return BridgeResponse.success(data: [
     ]
 ])
 
-// Error response
-return BridgeResponse.error("Something went wrong")
+// Error response (always include code and message)
+return BridgeResponse.error(code: "OPERATION_FAILED", message: "Something went wrong")
 
-// Error with code
+// Error with specific code
 return BridgeResponse.error(code: "FILE_NOT_FOUND", message: "The specified file does not exist")
 ```
 
@@ -226,7 +227,7 @@ class RequiresCameraPermission: BridgeFunction {
             )
 
         @unknown default:
-            return BridgeResponse.error("Unknown permission status")
+            return BridgeResponse.error(code: "UNKNOWN_STATUS", message: "Unknown permission status")
         }
     }
 }
@@ -240,7 +241,7 @@ class OpenScanner: BridgeFunction {
     func execute(parameters: [String: Any]) throws -> [String: Any] {
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let rootVC = windowScene.windows.first?.rootViewController else {
-            return BridgeResponse.error("Cannot present view controller")
+            return BridgeResponse.error(code: "VIEW_CONTROLLER_ERROR", message: "Cannot present view controller")
         }
 
         var topVC = rootVC
@@ -339,17 +340,17 @@ import Vision
 class RunMLInference: BridgeFunction {
     func execute(parameters: [String: Any]) throws -> [String: Any] {
         guard let imagePath = parameters["imagePath"] as? String else {
-            return BridgeResponse.error("imagePath is required")
+            return BridgeResponse.error(code: "INVALID_PARAMETERS", message: "imagePath is required")
         }
 
         guard let image = UIImage(contentsOfFile: imagePath),
               let cgImage = image.cgImage else {
-            return BridgeResponse.error("Failed to load image")
+            return BridgeResponse.error(code: "IMAGE_LOAD_FAILED", message: "Failed to load image")
         }
 
         guard let modelURL = Bundle.main.url(forResource: "MyModel", withExtension: "mlmodelc"),
               let model = try? VNCoreMLModel(for: MLModel(contentsOf: modelURL)) else {
-            return BridgeResponse.error("Failed to load ML model")
+            return BridgeResponse.error(code: "MODEL_LOAD_FAILED", message: "Failed to load ML model")
         }
 
         var predictions: [[String: Any]] = []
@@ -420,10 +421,10 @@ class AuthenticateWithBiometrics: BridgeFunction {
 class SaveFile: BridgeFunction {
     func execute(parameters: [String: Any]) throws -> [String: Any] {
         guard let content = parameters["content"] as? String else {
-            return BridgeResponse.error("content is required")
+            return BridgeResponse.error(code: "INVALID_PARAMETERS", message: "content is required")
         }
         guard let filename = parameters["filename"] as? String else {
-            return BridgeResponse.error("filename is required")
+            return BridgeResponse.error(code: "INVALID_PARAMETERS", message: "filename is required")
         }
 
         let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -456,10 +457,10 @@ import Security
 class SaveToKeychain: BridgeFunction {
     func execute(parameters: [String: Any]) throws -> [String: Any] {
         guard let key = parameters["key"] as? String else {
-            return BridgeResponse.error("key is required")
+            return BridgeResponse.error(code: "INVALID_PARAMETERS", message: "key is required")
         }
         guard let value = parameters["value"] as? String else {
-            return BridgeResponse.error("value is required")
+            return BridgeResponse.error(code: "INVALID_PARAMETERS", message: "value is required")
         }
 
         let data = value.data(using: .utf8)!

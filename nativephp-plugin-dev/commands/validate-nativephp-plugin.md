@@ -95,7 +95,8 @@ Read and validate:
 - [ ] Each bridge function has matching class
 - [ ] Classes implement `BridgeFunction` from `com.nativephp.mobile.bridge`
 - [ ] `execute()` method returns `Map<String, Any>`
-- [ ] Uses `BridgeResponse.success()` or `BridgeResponse.error()`
+- [ ] Uses `BridgeResponse.success()` for success
+- [ ] Uses `BridgeResponse.error(BridgeError("CODE", "message"))` for errors (BridgeError required!)
 
 **Swift (iOS):**
 - [ ] File exists at `resources/ios/{Namespace}Functions.swift` (or `resources/ios/Sources/` for legacy structure)
@@ -103,7 +104,8 @@ Read and validate:
 - [ ] Each bridge function has matching class
 - [ ] Classes conform to `BridgeFunction`
 - [ ] `execute()` method returns `[String: Any]`
-- [ ] Uses `BridgeResponse.success()` or `BridgeResponse.error()`
+- [ ] Uses `BridgeResponse.success(data:)` for success
+- [ ] Uses `BridgeResponse.error(code: "CODE", message: "message")` for errors (both params required!)
 
 ### 6. Consistency Checks
 

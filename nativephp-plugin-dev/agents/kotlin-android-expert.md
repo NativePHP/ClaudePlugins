@@ -31,6 +31,7 @@ import androidx.fragment.app.FragmentActivity
 import android.content.Context
 import com.nativephp.mobile.bridge.BridgeFunction
 import com.nativephp.mobile.bridge.BridgeResponse
+import com.nativephp.mobile.bridge.BridgeError
 
 object MyPluginFunctions {
 
@@ -47,7 +48,7 @@ object MyPluginFunctions {
         override fun execute(parameters: Map<String, Any>): Map<String, Any> {
             // 1. Extract and validate parameters
             val param1 = parameters["param1"] as? String
-                ?: return BridgeResponse.error("param1 is required")
+                ?: return BridgeResponse.error(BridgeError("INVALID_PARAMETERS", "param1 is required"))
 
             // 2. Perform the native operation
             try {
@@ -58,7 +59,7 @@ object MyPluginFunctions {
                     "result" to result
                 ))
             } catch (e: Exception) {
-                return BridgeResponse.error(e.message ?: "Unknown error")
+                return BridgeResponse.error(BridgeError("OPERATION_FAILED", e.message ?: "Unknown error"))
             }
         }
     }
@@ -74,11 +75,13 @@ object MyPluginFunctions {
 **ALWAYS use:**
 ```kotlin
 import com.nativephp.mobile.bridge.BridgeResponse
+import com.nativephp.mobile.bridge.BridgeError
 
 return BridgeResponse.success(mapOf("key" to "value"))
-return BridgeResponse.error("Error message")
-return BridgeResponse.error("ERROR_CODE", "Error message")
+return BridgeResponse.error(BridgeError("ERROR_CODE", "Error message"))
 ```
+
+**IMPORTANT: Android BridgeResponse.error requires a `BridgeError` object with both `code` and `message` parameters.**
 
 **NEVER return plain Map<String, Any> directly.** The official NativePHP plugin stubs use BridgeResponse. This is the correct pattern.
 
@@ -109,7 +112,7 @@ class MyFunction(private val activity: FragmentActivity) : BridgeFunction {
 ```kotlin
 // Required string
 val name = parameters["name"] as? String
-    ?: return BridgeResponse.error("name is required")
+    ?: return BridgeResponse.error(BridgeError("INVALID_PARAMETERS", "name is required"))
 
 // Numbers (always come as Number, cast appropriately)
 val count = (parameters["count"] as? Number)?.toInt() ?: 0
@@ -135,11 +138,11 @@ return BridgeResponse.success(mapOf(
     "metadata" to mapOf("width" to width, "height" to height)
 ))
 
-// Error response
-return BridgeResponse.error("Something went wrong")
+// Error (always use BridgeError with code and message)
+return BridgeResponse.error(BridgeError("OPERATION_FAILED", "Something went wrong"))
 
-// Error with code
-return BridgeResponse.error("FILE_NOT_FOUND", "The specified file does not exist")
+// Error with specific code
+return BridgeResponse.error(BridgeError("FILE_NOT_FOUND", "The specified file does not exist"))
 ```
 
 ### 5. Threading
@@ -214,7 +217,7 @@ class RequiresPermission(private val activity: FragmentActivity) : BridgeFunctio
     override fun execute(parameters: Map<String, Any>): Map<String, Any> {
         if (ContextCompat.checkSelfPermission(activity, Manifest.permission.CAMERA)
             != PackageManager.PERMISSION_GRANTED) {
-            return BridgeResponse.error("PERMISSION_DENIED", "Camera permission required")
+            return BridgeResponse.error(BridgeError("PERMISSION_DENIED", "Camera permission required"))
         }
 
         // Proceed with operation
@@ -274,7 +277,7 @@ import org.tensorflow.lite.Interpreter
 class RunInference(private val activity: FragmentActivity) : BridgeFunction {
     override fun execute(parameters: Map<String, Any>): Map<String, Any> {
         val modelPath = parameters["modelPath"] as? String
-            ?: return BridgeResponse.error("modelPath required")
+            ?: return BridgeResponse.error(BridgeError("INVALID_PARAMETERS", "modelPath required"))
 
         try {
             val assetManager = activity.assets
@@ -292,7 +295,7 @@ class RunInference(private val activity: FragmentActivity) : BridgeFunction {
 
             return BridgeResponse.success(mapOf("predictions" to results))
         } catch (e: Exception) {
-            return BridgeResponse.error("INFERENCE_FAILED", e.message ?: "Unknown error")
+            return BridgeResponse.error(BridgeError("INFERENCE_FAILED", e.message ?: "Unknown error"))
         }
     }
 }
@@ -309,7 +312,7 @@ class GetAccelerometer(private val activity: FragmentActivity) : BridgeFunction 
     override fun execute(parameters: Map<String, Any>): Map<String, Any> {
         val sensorManager = activity.getSystemService(Context.SENSOR_SERVICE) as SensorManager
         val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-            ?: return BridgeResponse.error("Accelerometer not available")
+            ?: return BridgeResponse.error(BridgeError("SENSOR_UNAVAILABLE", "Accelerometer not available"))
 
         var result: Map<String, Any>? = null
         val latch = CountDownLatch(1)
@@ -331,7 +334,7 @@ class GetAccelerometer(private val activity: FragmentActivity) : BridgeFunction 
         latch.await(1, TimeUnit.SECONDS)
 
         return result?.let { BridgeResponse.success(it) }
-            ?: BridgeResponse.error("Timeout reading sensor")
+            ?: BridgeResponse.error(BridgeError("TIMEOUT", "Timeout reading sensor"))
     }
 }
 ```

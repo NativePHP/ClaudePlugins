@@ -1,7 +1,7 @@
 ---
 name: NativePHP Plugin Structure
-description: This skill explains NativePHP plugin structure and configuration. Use when the user asks about "plugin structure", "nativephp.json", "plugin manifest", "composer.json setup", "service provider", "facade", "plugin directory layout", "bridge_functions array", "plugin permissions", "plugin dependencies", "plugin repositories", "custom maven repository", "plugin secrets", "environment variables", "placeholder substitution", "plugin hooks", "copy_assets", or how to organize a NativePHP plugin package.
-version: 1.0.2
+description: This skill explains NativePHP plugin structure and configuration. Use when the user asks about "plugin structure", "nativephp.json", "plugin manifest", "composer.json setup", "service provider", "facade", "plugin directory layout", "bridge_functions array", "plugin permissions", "plugin dependencies", "plugin repositories", "custom maven repository", "plugin secrets", "environment variables", "placeholder substitution", "plugin hooks", "copy_assets", "features", "uses-feature", "meta_data", "background_modes", "entitlements", or how to organize a NativePHP plugin package.
+version: 1.0.3
 ---
 
 # NativePHP Plugin Structure
@@ -204,6 +204,10 @@ All Android-specific configuration goes under the `android` key:
         "android.permission.RECORD_AUDIO",
         "android.permission.VIBRATE"
     ],
+    "features": [
+        {"name": "android.hardware.camera", "required": true},
+        {"name": "android.hardware.camera.autofocus", "required": false}
+    ],
     "repositories": [
         {
             "url": "https://api.mapbox.com/downloads/v2/releases/maven"
@@ -215,16 +219,24 @@ All Android-specific configuration goes under the `android` key:
             "androidx.camera:camera-camera2:1.3.0"
         ]
     },
+    "meta_data": [
+        {
+            "name": "com.google.android.geo.API_KEY",
+            "value": "${GOOGLE_MAPS_API_KEY}"
+        }
+    ],
     "activities": [...],
     "services": [...],
     "receivers": [...],
-    "providers": [...],
+    "providers": [...]
 }
 ```
 
 **permissions**: Array of Android permission strings
+**features**: Hardware/software feature declarations (uses-feature)
 **repositories**: Custom Maven repositories (see below)
 **dependencies**: Gradle dependency strings (implementation, api, compileOnly, runtimeOnly)
+**meta_data**: Application-level meta-data entries for SDK configuration
 **activities/services/receivers/providers**: AndroidManifest.xml components
 
 #### repositories (Custom Maven Repositories)
@@ -278,16 +290,66 @@ All iOS-specific configuration goes under the `ios` key:
             }
         ],
         "pods": [
-            "TensorFlowLiteSwift"
+            {"name": "TensorFlowLiteSwift", "version": "~> 2.0"}
         ]
+    },
+    "background_modes": ["audio", "fetch", "processing"],
+    "entitlements": {
+        "com.apple.developer.maps": true,
+        "com.apple.security.application-groups": ["group.com.example.shared"]
     }
 }
 ```
 
 **info_plist**: Object mapping Info.plist keys to values (permissions, API tokens, config)
 **dependencies**: Swift Package URLs with versions, or CocoaPods names
+**background_modes**: UIBackgroundModes values (audio, fetch, processing, location, remote-notification, bluetooth-central, bluetooth-peripheral)
+**entitlements**: App entitlements for capabilities (Maps, App Groups, HealthKit, iCloud, etc.)
 
 Use `${ENV_VAR}` placeholders for sensitive values like API tokens.
+
+#### background_modes (iOS)
+
+Enable background execution capabilities:
+
+```json
+"ios": {
+    "background_modes": ["audio", "fetch", "processing", "location"]
+}
+```
+
+Common values:
+- `audio` — Audio playback or recording
+- `fetch` — Background fetch
+- `processing` — Background processing tasks
+- `location` — Location updates
+- `remote-notification` — Push notification processing
+- `bluetooth-central` — Bluetooth LE central mode
+- `bluetooth-peripheral` — Bluetooth LE peripheral mode
+
+These are merged into `UIBackgroundModes` in Info.plist.
+
+#### entitlements (iOS)
+
+Configure app entitlements for capabilities:
+
+```json
+"ios": {
+    "entitlements": {
+        "com.apple.developer.maps": true,
+        "com.apple.security.application-groups": ["group.com.example.shared"],
+        "com.apple.developer.associated-domains": ["applinks:example.com"],
+        "com.apple.developer.healthkit": true
+    }
+}
+```
+
+Values can be:
+- **Boolean** — `true`/`false` for simple capabilities
+- **Array** — For capabilities requiring multiple values (App Groups, Associated Domains)
+- **String** — For single-value entitlements
+
+Entitlements are written to `NativePHP.entitlements`. If the file doesn't exist, it's created automatically.
 
 #### secrets (Environment Variables)
 

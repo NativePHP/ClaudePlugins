@@ -104,7 +104,8 @@ Gather:
 - Classes implement `BridgeFunction` from `com.nativephp.mobile.bridge`
 - `execute()` method signature is correct
 - Returns `Map<String, Any>`
-- Uses `BridgeResponse.success()` or `BridgeResponse.error()`
+- Uses `BridgeResponse.success()` for success responses
+- Uses `BridgeResponse.error(BridgeError("CODE", "message"))` for errors (BridgeError is required!)
 - Event dispatch uses `Handler(Looper.getMainLooper()).post`
 
 #### Swift Code Validation
@@ -117,7 +118,8 @@ Gather:
 - Classes conform to `BridgeFunction` protocol
 - `execute()` method signature is correct
 - Returns `[String: Any]`
-- Uses `BridgeResponse.success(data:)` or `BridgeResponse.error()`
+- Uses `BridgeResponse.success(data:)` for success responses
+- Uses `BridgeResponse.error(code: "CODE", message: "message")` for errors (both code and message required!)
 - Event dispatch uses `DispatchQueue.main.async`
 
 ### 4. Cross-Platform Consistency
