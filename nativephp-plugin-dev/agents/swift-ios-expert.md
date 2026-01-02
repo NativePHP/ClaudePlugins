@@ -487,6 +487,70 @@ class SaveToKeychain: BridgeFunction {
 }
 ```
 
+### AppDelegate Lifecycle Events (NotificationCenter)
+
+Plugins that need to respond to iOS AppDelegate lifecycle events should subscribe to NativePHP's NotificationCenter events:
+
+```swift
+import Foundation
+import UIKit
+
+/// Singleton delegate that subscribes to AppDelegate lifecycle events
+class MyPluginDelegate: NSObject {
+    static let shared = MyPluginDelegate()
+
+    private override init() {
+        super.init()
+        setupNotificationObservers()
+    }
+
+    private func setupNotificationObservers() {
+        // Subscribe to APNS token registration
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleDidRegisterForRemoteNotifications(_:)),
+            name: Notification.Name("NativePHP.didRegisterForRemoteNotifications"),
+            object: nil
+        )
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleDidFailToRegisterForRemoteNotifications(_:)),
+            name: Notification.Name("NativePHP.didFailToRegisterForRemoteNotifications"),
+            object: nil
+        )
+    }
+
+    @objc private func handleDidRegisterForRemoteNotifications(_ notification: Notification) {
+        guard let deviceToken = notification.userInfo?["deviceToken"] as? Data else { return }
+
+        let tokenString = deviceToken.map { String(format: "%02x", $0) }.joined()
+        UserDefaults.standard.set(tokenString, forKey: "my_plugin_push_token")
+
+        LaravelBridge.shared.send?(
+            "Vendor\\MyPlugin\\Events\\TokenReceived",
+            ["token": tokenString]
+        )
+    }
+
+    @objc private func handleDidFailToRegisterForRemoteNotifications(_ notification: Notification) {
+        if let error = notification.userInfo?["error"] as? Error {
+            print("Failed to register: \(error.localizedDescription)")
+        }
+    }
+}
+```
+
+**Available Notifications:**
+- `NativePHP.didRegisterForRemoteNotifications` - APNS token received (`["deviceToken": Data]`)
+- `NativePHP.didFailToRegisterForRemoteNotifications` - Registration failed (`["error": Error]`)
+- `NativePHP.didReceiveRemoteNotification` - Remote notification received
+- `NativePHP.didFinishLaunching` - App finished launching
+- `NativePHP.didBecomeActive` - App became active
+- `NativePHP.didEnterBackground` - App entered background
+
+The delegate can also conform to iOS protocols like `UNUserNotificationCenterDelegate` and `MessagingDelegate`.
+
 ## Debugging Tips
 
 1. Use `print()` or `NSLog()` for debug logging - visible in Xcode console

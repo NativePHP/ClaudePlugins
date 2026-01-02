@@ -698,3 +698,309 @@ return BridgeResponse.success(data: [
 ```
 
 PHP can then use these paths directly for file operations.
+
+---
+
+## Android Activity Lifecycle Events (NativePHPLifecycle Pattern)
+
+Plugins that need to respond to Android Activity lifecycle events (FCM tokens, app state changes, deep links, etc.) should subscribe to NativePHP's `NativePHPLifecycle` event bus rather than modifying MainActivity directly.
+
+### Available Events
+
+MainActivity and PushNotificationService post these events that plugins can subscribe to:
+
+| Event Name | Data | Description |
+|------------|------|-------------|
+| `didRegisterForRemoteNotifications` | `["token": String]` | FCM token received |
+| `didFailToRegisterForRemoteNotifications` | `["error": String]` | FCM registration failed |
+| `didReceiveRemoteNotification` | `["title", "body", "data": Map]` | Push notification received |
+| `onResume` | none | Activity resumed (foreground) |
+| `onPause` | none | Activity paused (background) |
+| `onDestroy` | none | Activity destroyed |
+| `onNewIntent` | `["url": String]` | Deep link received |
+| `onPermissionResult` | `["permission", "granted", "requestCode"]` | Permission request result |
+
+### Subscribing to Lifecycle Events (Kotlin)
+
+Create a singleton that subscribes to the events it needs:
+
+```kotlin
+package com.myvendor.plugins.myplugin
+
+import com.nativephp.mobile.lifecycle.NativePHPLifecycle
+
+object MyPluginDelegate {
+    private var initialized = false
+
+    fun initialize() {
+        if (initialized) return
+        initialized = true
+
+        // Subscribe to FCM token registration
+        NativePHPLifecycle.on(NativePHPLifecycle.Events.DID_REGISTER_FOR_REMOTE_NOTIFICATIONS) { data ->
+            val token = data["token"] as? String ?: return@on
+            println("MyPluginDelegate: Received FCM token: $token")
+
+            // Cache it, send to server, etc.
+            // UserDefaults equivalent in Android
+            // SharedPreferences.edit().putString("my_plugin_push_token", token).apply()
+        }
+
+        NativePHPLifecycle.on(NativePHPLifecycle.Events.DID_FAIL_TO_REGISTER_FOR_REMOTE_NOTIFICATIONS) { data ->
+            val error = data["error"] as? String
+            println("MyPluginDelegate: Failed to register: $error")
+        }
+
+        NativePHPLifecycle.on(NativePHPLifecycle.Events.ON_RESUME) { _ ->
+            println("MyPluginDelegate: App resumed")
+            // Refresh state, resume tasks, etc.
+        }
+
+        NativePHPLifecycle.on(NativePHPLifecycle.Events.ON_NEW_INTENT) { data ->
+            val url = data["url"] as? String ?: return@on
+            println("MyPluginDelegate: Deep link received: $url")
+            // Handle OAuth callbacks, deep links, etc.
+        }
+    }
+}
+```
+
+### Initializing the Delegate
+
+Initialize the delegate in your first bridge function call:
+
+```kotlin
+object MyPluginFunctions {
+
+    class Initialize(private val context: Context) : BridgeFunction {
+        override fun execute(parameters: Map<String, Any>): Map<String, Any> {
+            // Ensure delegate is initialized and listening
+            MyPluginDelegate.initialize()
+
+            return BridgeResponse.success(mapOf("initialized" to true))
+        }
+    }
+}
+```
+
+### Why NativePHPLifecycle?
+
+This pattern keeps MainActivity clean and generic:
+
+1. **Decoupling**: Plugins don't modify MainActivity source code
+2. **Multiple subscribers**: Multiple plugins can listen to the same events
+3. **Thread-safe**: Callbacks run on the main thread automatically
+4. **Easy testing**: Can post events in tests to simulate lifecycle events
+
+### NativePHPLifecycle API
+
+```kotlin
+import com.nativephp.mobile.lifecycle.NativePHPLifecycle
+
+// Subscribe to an event
+val subscriptionId = NativePHPLifecycle.on("eventName") { data ->
+    // Handle event
+}
+
+// Unsubscribe from an event
+NativePHPLifecycle.off("eventName", callback)
+
+// Remove all listeners for an event
+NativePHPLifecycle.offAll("eventName")
+
+// Check if there are listeners
+val hasListeners = NativePHPLifecycle.hasListeners("eventName")
+
+// Clear all listeners (cleanup)
+NativePHPLifecycle.clear()
+
+// Event name constants
+NativePHPLifecycle.Events.DID_REGISTER_FOR_REMOTE_NOTIFICATIONS
+NativePHPLifecycle.Events.DID_FAIL_TO_REGISTER_FOR_REMOTE_NOTIFICATIONS
+NativePHPLifecycle.Events.DID_RECEIVE_REMOTE_NOTIFICATION
+NativePHPLifecycle.Events.ON_RESUME
+NativePHPLifecycle.Events.ON_PAUSE
+NativePHPLifecycle.Events.ON_DESTROY
+NativePHPLifecycle.Events.ON_NEW_INTENT
+NativePHPLifecycle.Events.ON_PERMISSION_RESULT
+```
+
+---
+
+## iOS AppDelegate Lifecycle Events (NotificationCenter Pattern)
+
+Plugins that need to respond to iOS AppDelegate lifecycle events (push notification tokens, app state changes, etc.) should subscribe to NativePHP's NotificationCenter events rather than modifying AppDelegate directly.
+
+### Available Notification Names
+
+AppDelegate posts these notifications that plugins can subscribe to:
+
+| Notification Name | userInfo | Description |
+|-------------------|----------|-------------|
+| `NativePHP.didRegisterForRemoteNotifications` | `["deviceToken": Data]` | APNS device token received |
+| `NativePHP.didFailToRegisterForRemoteNotifications` | `["error": Error]` | APNS registration failed |
+| `NativePHP.didReceiveRemoteNotification` | `["payload": [AnyHashable: Any]]` | Remote notification received |
+| `NativePHP.didFinishLaunching` | `["launchOptions": [...]]` | App finished launching |
+| `NativePHP.didBecomeActive` | none | App became active |
+| `NativePHP.didEnterBackground` | none | App entered background |
+
+### Subscribing to Lifecycle Events (Swift)
+
+Create a singleton delegate class that subscribes to the notifications it needs:
+
+```swift
+import Foundation
+import UIKit
+
+/// Singleton that handles AppDelegate lifecycle events via NotificationCenter
+class MyPluginDelegate: NSObject {
+    static let shared = MyPluginDelegate()
+
+    private override init() {
+        super.init()
+        setupNotificationObservers()
+    }
+
+    // MARK: - NotificationCenter Observers
+
+    private func setupNotificationObservers() {
+        // Subscribe to APNS token registration
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleDidRegisterForRemoteNotifications(_:)),
+            name: Notification.Name("NativePHP.didRegisterForRemoteNotifications"),
+            object: nil
+        )
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleDidFailToRegisterForRemoteNotifications(_:)),
+            name: Notification.Name("NativePHP.didFailToRegisterForRemoteNotifications"),
+            object: nil
+        )
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleDidBecomeActive(_:)),
+            name: Notification.Name("NativePHP.didBecomeActive"),
+            object: nil
+        )
+    }
+
+    @objc private func handleDidRegisterForRemoteNotifications(_ notification: Notification) {
+        guard let deviceToken = notification.userInfo?["deviceToken"] as? Data else { return }
+
+        // Convert token to string
+        let tokenString = deviceToken.map { String(format: "%02x", $0) }.joined()
+        print("MyPluginDelegate: Received APNS token: \(tokenString)")
+
+        // Cache it, send to server, etc.
+        UserDefaults.standard.set(tokenString, forKey: "my_plugin_push_token")
+
+        // Dispatch event to PHP if needed
+        LaravelBridge.shared.send?(
+            "Vendor\\MyPlugin\\Events\\TokenReceived",
+            ["token": tokenString]
+        )
+    }
+
+    @objc private func handleDidFailToRegisterForRemoteNotifications(_ notification: Notification) {
+        if let error = notification.userInfo?["error"] as? Error {
+            print("MyPluginDelegate: Failed to register: \(error.localizedDescription)")
+        }
+    }
+
+    @objc private func handleDidBecomeActive(_ notification: Notification) {
+        print("MyPluginDelegate: App became active")
+        // Refresh state, resume tasks, etc.
+    }
+}
+```
+
+### Initializing the Delegate
+
+The delegate must be instantiated early so it can receive notifications. A common pattern is to reference `MyPluginDelegate.shared` in your first bridge function call:
+
+```swift
+enum MyPluginFunctions {
+
+    class Initialize: BridgeFunction {
+        func execute(parameters: [String: Any]) throws -> [String: Any] {
+            // Ensure delegate is instantiated and listening
+            _ = MyPluginDelegate.shared
+
+            return BridgeResponse.success(data: ["initialized": true])
+        }
+    }
+}
+```
+
+Or trigger it when setting up UNUserNotificationCenter delegate:
+
+```swift
+class RequestPermission: BridgeFunction {
+    func execute(parameters: [String: Any]) throws -> [String: Any] {
+        let center = UNUserNotificationCenter.current()
+        center.delegate = MyPluginDelegate.shared  // Also instantiates if needed
+
+        // ... rest of permission request logic
+    }
+}
+```
+
+### Why NotificationCenter?
+
+This pattern keeps AppDelegate clean and generic:
+
+1. **Decoupling**: Plugins don't modify AppDelegate source code
+2. **Multiple subscribers**: Multiple plugins can listen to the same events
+3. **Standard iOS pattern**: Uses built-in NotificationCenter, no swizzling needed
+4. **Easy testing**: Can post notifications in tests to simulate lifecycle events
+
+### Protocol Conformance in Delegates
+
+Your delegate can also conform to iOS delegate protocols (UNUserNotificationCenterDelegate, MessagingDelegate, etc.):
+
+```swift
+class MyPluginDelegate: NSObject, UNUserNotificationCenterDelegate, MessagingDelegate {
+    static let shared = MyPluginDelegate()
+
+    private override init() {
+        super.init()
+        setupNotificationObservers()
+    }
+
+    // MARK: - UNUserNotificationCenterDelegate
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        // Show notification even when app is in foreground
+        completionHandler([.banner, .sound, .badge])
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        // Handle notification tap
+        let userInfo = response.notification.request.content.userInfo
+        print("User tapped notification: \(userInfo)")
+        completionHandler()
+    }
+
+    // MARK: - MessagingDelegate (Firebase)
+
+    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+        guard let fcmToken = fcmToken else { return }
+        print("FCM token received: \(fcmToken)")
+
+        LaravelBridge.shared.send?(
+            "Vendor\\MyPlugin\\Events\\TokenGenerated",
+            ["token": fcmToken]
+        )
+    }
+}

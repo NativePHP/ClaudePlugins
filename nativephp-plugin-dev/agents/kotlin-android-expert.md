@@ -346,6 +346,49 @@ class GetAccelerometer(private val activity: FragmentActivity) : BridgeFunction 
 3. For crashes, the stack trace appears in logcat
 4. Test parameter extraction with various input types
 
+### Activity Lifecycle Events (NativePHPLifecycle)
+
+Plugins that need to respond to Android Activity lifecycle events should subscribe to NativePHP's `NativePHPLifecycle` event bus:
+
+```kotlin
+import com.nativephp.mobile.lifecycle.NativePHPLifecycle
+
+object MyPluginDelegate {
+    private var initialized = false
+
+    fun initialize() {
+        if (initialized) return
+        initialized = true
+
+        // Subscribe to FCM token registration
+        NativePHPLifecycle.on(NativePHPLifecycle.Events.DID_REGISTER_FOR_REMOTE_NOTIFICATIONS) { data ->
+            val token = data["token"] as? String ?: return@on
+            println("Received FCM token: $token")
+        }
+
+        NativePHPLifecycle.on(NativePHPLifecycle.Events.ON_RESUME) { _ ->
+            println("App resumed")
+        }
+
+        NativePHPLifecycle.on(NativePHPLifecycle.Events.ON_NEW_INTENT) { data ->
+            val url = data["url"] as? String ?: return@on
+            println("Deep link received: $url")
+        }
+    }
+}
+```
+
+**Available Events:**
+- `DID_REGISTER_FOR_REMOTE_NOTIFICATIONS` - FCM token received (`["token": String]`)
+- `DID_FAIL_TO_REGISTER_FOR_REMOTE_NOTIFICATIONS` - Registration failed (`["error": String]`)
+- `DID_RECEIVE_REMOTE_NOTIFICATION` - Push notification received
+- `ON_RESUME` / `ON_PAUSE` - App foreground/background
+- `ON_DESTROY` - Activity destroyed
+- `ON_NEW_INTENT` - Deep link received (`["url": String]`)
+- `ON_PERMISSION_RESULT` - Permission request result
+
+Initialize the delegate in your first bridge function call to ensure it receives events.
+
 ## Your Task
 
 When asked to implement Android/Kotlin code for a plugin:

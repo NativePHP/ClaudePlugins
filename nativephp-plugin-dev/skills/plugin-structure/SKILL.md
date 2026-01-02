@@ -305,8 +305,58 @@ All iOS-specific configuration goes under the `ios` key:
 **dependencies**: Swift Package URLs with versions, or CocoaPods names
 **background_modes**: UIBackgroundModes values (audio, fetch, processing, location, remote-notification, bluetooth-central, bluetooth-peripheral)
 **entitlements**: App entitlements for capabilities (Maps, App Groups, HealthKit, iCloud, etc.)
+**init_function**: Swift function to call during plugin initialization (see below)
 
 Use `${ENV_VAR}` placeholders for sensitive values like API tokens.
+
+#### init_function (iOS/Android)
+
+Plugins can specify an initialization function that runs during app startup. This is essential for plugins that need to:
+- Initialize SDK singletons (Firebase, etc.)
+- Register for lifecycle events via `NativePHPPluginRegistry`
+- Subscribe to `NotificationCenter` events
+- Set up delegates before bridge functions are called
+
+**iOS:**
+```json
+"ios": {
+    "init_function": "NativePHPMyPluginInit"
+}
+```
+
+The function must be a `@_cdecl` exported C function in your Swift code:
+
+```swift
+@_cdecl("NativePHPMyPluginInit")
+public func NativePHPMyPluginInit() {
+    // Initialize singletons
+    _ = MyPluginManager.shared
+    _ = MyPluginDelegate.shared
+    print("MyPlugin initialized")
+}
+```
+
+**Android:**
+```json
+"android": {
+    "init_function": "com.myvendor.plugins.myplugin.MyPluginInit"
+}
+```
+
+The function must be a top-level function or object method in Kotlin:
+
+```kotlin
+fun MyPluginInit() {
+    // Initialize singletons, subscribe to lifecycle events
+    MyPluginDelegate.initialize()
+}
+```
+
+**When to use init_function:**
+- Your plugin has SDK singletons that must be created early
+- You need to subscribe to `NativePHPLifecycle` events (Android) or `NotificationCenter` (iOS)
+- You need to register with `NativePHPPluginRegistry` for `onAppLaunch` callbacks
+- Your bridge functions depend on state that must be set up first
 
 #### background_modes (iOS)
 
